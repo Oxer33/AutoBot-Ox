@@ -194,7 +194,7 @@ Il modulo è già disponibile, basta importarlo nel codice:
 
 ```python
 import sys
-sys.path.insert(0, r'""" + (self._cartella_lavoro or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))).replace("\\", "\\\\") + """')
+sys.path.insert(0, r'""" + os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "\\\\") + """')
 from core.computer_use import (
     muovi_mouse,          # muovi_mouse(x, y, durata=0.3)
     clicca,               # clicca(x, y, pulsante="left", doppio=False)
