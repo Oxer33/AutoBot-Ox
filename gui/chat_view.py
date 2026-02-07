@@ -384,6 +384,9 @@ class ChatView(ctk.CTkFrame):
         Chiamato quando lo streaming è completato.
         Resetta le variabili di streaming per il prossimo messaggio.
         """
+        # Scroll finale per assicurarsi che l'ultimo testo sia visibile
+        if self._testo_streaming:
+            self._scroll_in_basso()
         self._testo_streaming = ""
         self._label_streaming = None
 
