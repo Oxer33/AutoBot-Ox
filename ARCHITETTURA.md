@@ -11,6 +11,8 @@ AutoBot Ox è un'applicazione desktop che funge da interfaccia grafica per **Ope
 | Open Interpreter | 0.1.11 | Core AI (esecuzione comandi) |
 | Requests | 2.32.3 | HTTP per health check |
 | psutil | 6.1.1 | Monitoraggio sistema |
+| PyAutoGUI | 0.9.54 | Controllo mouse e tastiera |
+| pyperclip | 1.11.0 | Clipboard per testo Unicode |
 | PyInstaller | 6.11.1 | Packaging EXE portable |
 
 ## Struttura Cartelle
@@ -34,7 +36,8 @@ AutoBot Ox/
 │   ├── __init__.py                #    Inizializzazione modulo
 │   ├── interpreter_wrapper.py     #    Wrapper Open Interpreter con threading
 │   ├── provider_manager.py        #    Gestione provider LLM (locale/cloud)
-│   └── health_check.py            #    Heartbeat server locale (porta 1234)
+│   ├── health_check.py            #    Heartbeat server locale (porta 1234)
+│   └── computer_use.py            #    Controllo mouse/tastiera (pyautogui)
 │
 ├── gui/                           # 🖥️ MODULO INTERFACCIA GRAFICA
 │   ├── __init__.py                #    Inizializzazione modulo
@@ -121,6 +124,7 @@ AutoBot Ox/
 3. **System Message**: Include regole di sicurezza per impedire azioni distruttive. Viene aggiunto una sola volta (marcatore anti-duplicazione).
 4. **Emergency Stop**: Pulsante per interrompere immediatamente qualsiasi operazione
 5. **Cartella di Lavoro**: L'IA opera solo nella cartella specificata dall'utente
+6. **Computer Use**: Disattivato di default. Toggle nella sidebar. FAILSAFE: muovere il mouse nell'angolo in alto a sinistra interrompe tutto. Ogni azione viene loggata.
 
 ## Componenti Completati ✅
 - [x] Struttura modulare del progetto
@@ -138,6 +142,23 @@ AutoBot Ox/
 - [x] Token counter per OpenRouter
 - [x] Export cronologia (TXT/MD)
 - [x] Script build per EXE portable
+- [x] Computer Use: controllo mouse/tastiera via pyautogui
+- [x] Fix connessione LLM: api_key dummy per locale, prefisso openrouter/ per cloud
+- [x] Fix context window warning litellm
+
+## Note Tecniche Importanti
+
+### Connessione LLM
+- **Locale**: litellm richiede SEMPRE una api_key, anche per server locali. Usiamo `"not-needed"` come dummy.
+- **OpenRouter**: Il modello deve avere il prefisso `openrouter/` (es. `openrouter/deepseek/deepseek-r1-0528:free`). NON impostare `api_base` quando si usa questo prefisso - litellm gestisce il routing internamente.
+- **Switch locale↔cloud**: Impostare esplicitamente `local=False` quando si passa a cloud, altrimenti il flag resta `True`.
+
+### Computer Use (core/computer_use.py)
+- Usa `pyautogui` per mouse/tastiera e `pyperclip` per clipboard
+- Ogni funzione controlla il flag `_computer_use_abilitato` prima di agire
+- FAILSAFE di pyautogui: mouse nell'angolo in alto a sinistra = stop totale
+- Le istruzioni per l'IA sono nel `system_message` dell'interpreter wrapper
+- L'IA importa il modulo con `from core.computer_use import ...`
 
 ## Componenti Futuri / Miglioramenti Possibili
 - [ ] Crittografia API key con libreria cryptography
@@ -147,4 +168,4 @@ AutoBot Ox/
 - [ ] Supporto multi-lingua
 - [ ] Integrazione con più provider LLM (Anthropic, OpenAI, ecc.)
 - [ ] Voice input (microfono)
-- [ ] Screenshot e OCR per OS mode
+- [ ] Terminale con colori multipli (tkinter.Text nativo invece di CTkTextbox)

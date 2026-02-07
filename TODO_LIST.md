@@ -56,8 +56,20 @@
 - ✅ Fix duplicazione system_message su riconfigura
 - ✅ Fix formato messaggi cronologia/export per v0.1.x
 - ✅ Pulizia import inutilizzati
-- ⏳ Test con LLM locale (LM Studio sulla porta 1234)
-- ⏳ Test con DeepSeek R1 via OpenRouter
+- ✅ Test con LLM locale (LM Studio porta 1234) - funzionante!
+- ⏳ Test con DeepSeek R1 via OpenRouter (richiede test utente)
+
+## Fase 8: Fix LLM & Computer Use ✅
+- ✅ Fix connessione locale: api_key dummy "not-needed" per litellm
+- ✅ Fix connessione OpenRouter: prefisso `openrouter/` per litellm
+- ✅ Fix interpreter_wrapper: local=False esplicito per cloud
+- ✅ Fix context window warning litellm (max_tokens)
+- ✅ Computer Use: modulo core/computer_use.py con pyautogui
+- ✅ Computer Use: toggle nella sidebar GUI
+- ✅ Computer Use: istruzioni nel system_message per l'IA
+- ✅ Computer Use: FAILSAFE (mouse angolo alto-sinistra)
+- ✅ Aggiornato requirements.txt, main.py, default_config.json
+- ✅ Aggiornato ARCHITETTURA.md con note tecniche
 
 ## Miglioramenti Futuri ⏳
 - ⏳ 🟡 Crittografia API key con libreria cryptography
@@ -66,7 +78,8 @@
 - ⏳ 🟢 Auto-aggiornamento
 - ⏳ 🟢 Voice input
 - ⏳ 🟢 Più provider LLM
+- ⏳ 🟢 Terminale con colori multipli (tkinter.Text nativo)
 
 ---
 
-*Ultimo aggiornamento: 2026-02-07*
+*Ultimo aggiornamento: 2026-02-07 16:40*
