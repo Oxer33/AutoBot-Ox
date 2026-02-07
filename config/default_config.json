@@ -16,12 +16,13 @@
     "provider_cloud": {
         "nome": "DeepSeek R1 (OpenRouter)",
         "api_base": "https://openrouter.ai/api/v1",
-        "modello": "deepseek/deepseek-r1-0528:free",
+        "modello": "openrouter/deepseek/deepseek-r1-0528:free",
         "api_key": "",
         "timeout_secondi": 60
     },
     "sicurezza": {
         "auto_run": false,
+        "computer_use": false,
         "safe_mode": "ask",
         "cartella_lavoro": "",
         "conferma_prima_esecuzione": true

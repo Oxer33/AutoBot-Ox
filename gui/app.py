@@ -30,6 +30,7 @@ from gui.dialogs import (
 from core.interpreter_wrapper import WrapperInterpreter, TipoMessaggio
 from core.provider_manager import GestoreProvider
 from core.health_check import ControlloSalute
+from core import computer_use
 
 # Importa le utilità
 from config.settings import GestoreImpostazioni
@@ -164,6 +165,7 @@ class AppAutoBot(ctk.CTk):
             self,
             callback_cambio_provider=self._on_cambio_provider,
             callback_toggle_autorun=self._on_toggle_autorun,
+            callback_toggle_computer_use=self._on_toggle_computer_use,
             callback_cambio_cartella=self._on_cambio_cartella,
             callback_nuova_chat=self._on_nuova_chat,
             callback_export=self._on_export_cronologia,
@@ -220,7 +222,7 @@ class AppAutoBot(ctk.CTk):
                 "provider_cloud.api_base", "https://openrouter.ai/api/v1"
             ),
             modello=self._impostazioni.ottieni(
-                "provider_cloud.modello", "deepseek/deepseek-r1-0528:free"
+                "provider_cloud.modello", "openrouter/deepseek/deepseek-r1-0528:free"
             ),
             api_key=self._impostazioni.ottieni(
                 "provider_cloud.api_key", ""
@@ -434,6 +436,31 @@ class AppAutoBot(ctk.CTk):
 
         stato = "ATTIVATO ⚠️" if attivo else "DISATTIVATO ✅"
         self._terminal_view.scrivi_log(f"Auto-run {stato}")
+
+    def _on_toggle_computer_use(self, attivo: bool) -> None:
+        """
+        Callback: l'utente ha attivato/disattivato il controllo mouse/tastiera.
+        
+        Args:
+            attivo: True se computer use è attivo
+        """
+        computer_use.abilita_computer_use(attivo)
+
+        if attivo:
+            self._terminal_view.scrivi_stato(
+                "🖱️ Computer Use ATTIVATO - L'IA può controllare mouse e tastiera!"
+            )
+            self._terminal_view.scrivi_log(
+                "FAILSAFE: Muovi il mouse nell'angolo in alto a sinistra per fermare tutto"
+            )
+        else:
+            self._terminal_view.scrivi_stato("🖱️ Computer Use DISATTIVATO")
+
+        logger.info(f"🖱️ Computer Use: {'ATTIVO' if attivo else 'DISATTIVO'}")
+        
+        # Salva nelle impostazioni
+        self._impostazioni.imposta("sicurezza.computer_use", attivo)
+        self._impostazioni.salva()
 
     def _on_cambio_cartella(self, cartella: str) -> None:
         """

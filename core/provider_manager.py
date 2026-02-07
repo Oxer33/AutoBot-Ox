@@ -71,6 +71,9 @@ class GestoreProvider:
             nome="LLM Locale (LM Studio / Ollama)",
             api_base=api_base,
             modello=modello,
+            # IMPORTANTE: litellm richiede SEMPRE una API key, anche per server locali!
+            # Senza questa key dummy, si ottiene: AuthenticationError: No API key provided
+            api_key="not-needed",
             offline=True,       # Il locale non ha bisogno di internet
             timeout=timeout,
             contesto_max=4096   # I modelli locali hanno spesso un contesto ridotto
@@ -80,7 +83,7 @@ class GestoreProvider:
     def registra_cloud(
         self,
         api_base: str = "https://openrouter.ai/api/v1",
-        modello: str = "deepseek/deepseek-r1-0528:free",
+        modello: str = "openrouter/deepseek/deepseek-r1-0528:free",
         api_key: str = "",
         timeout: int = 60
     ) -> None:
@@ -158,7 +161,9 @@ class GestoreProvider:
             "context_window": config.contesto_max,
         }
 
-        # Aggiungi API key solo se presente (non per il locale)
+        # IMPORTANTE: Passa SEMPRE la api_key!
+        # Per il locale usiamo "not-needed" come dummy (litellm la richiede comunque)
+        # Per il cloud usiamo la vera API key di OpenRouter
         if config.api_key:
             risultato["api_key"] = config.api_key
 
@@ -216,7 +221,7 @@ class GestoreProvider:
             return False, "Modello non specificato"
 
         # Per il cloud, serve la API key
-        if self._provider_attivo == "cloud" and not config.api_key:
+        if self._provider_attivo == "cloud" and (not config.api_key or config.api_key == "not-needed"):
             return False, "API key OpenRouter mancante! Inseriscila nelle impostazioni."
 
         return True, "Configurazione valida"

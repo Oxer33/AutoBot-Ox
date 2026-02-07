@@ -35,6 +35,7 @@ class Sidebar(ctk.CTkFrame):
         master,
         callback_cambio_provider: Optional[Callable] = None,
         callback_toggle_autorun: Optional[Callable] = None,
+        callback_toggle_computer_use: Optional[Callable] = None,
         callback_cambio_cartella: Optional[Callable] = None,
         callback_nuova_chat: Optional[Callable] = None,
         callback_export: Optional[Callable] = None,
@@ -53,6 +54,7 @@ class Sidebar(ctk.CTkFrame):
         # Salva i callback
         self._callback_cambio_provider = callback_cambio_provider
         self._callback_toggle_autorun = callback_toggle_autorun
+        self._callback_toggle_computer_use = callback_toggle_computer_use
         self._callback_cambio_cartella = callback_cambio_cartella
         self._callback_nuova_chat = callback_nuova_chat
         self._callback_export = callback_export
@@ -213,6 +215,36 @@ class Sidebar(ctk.CTkFrame):
         )
         # Inizialmente nascosto, mostrato solo quando auto-run è attivo
 
+        # Toggle Computer Use (controllo mouse/tastiera)
+        self._frame_computer_use = ctk.CTkFrame(self, fg_color="transparent")
+        self._frame_computer_use.pack(fill="x", padx=15, pady=(5, 2))
+
+        ctk.CTkLabel(
+            self._frame_computer_use,
+            text="🖱️ Computer Use:",
+            font=ctk.CTkFont(size=13)
+        ).pack(side="left")
+
+        self._switch_computer_use = ctk.CTkSwitch(
+            self._frame_computer_use,
+            text="",
+            command=self._on_toggle_computer_use,
+            width=40,
+            onvalue=True,
+            offvalue=False
+        )
+        self._switch_computer_use.pack(side="right")
+
+        # Avviso computer use
+        self._label_avviso_computer_use = ctk.CTkLabel(
+            self,
+            text="🖱️ L'IA può controllare mouse e\ntastiera! FAILSAFE: muovi il mouse\nnell'angolo in alto a sinistra.",
+            font=ctk.CTkFont(size=10),
+            text_color="#00bcd4",
+            justify="left"
+        )
+        # Inizialmente nascosto
+
         # Separatore
         self._crea_separatore()
 
@@ -326,6 +358,20 @@ class Sidebar(ctk.CTkFrame):
         if self._callback_toggle_autorun:
             self._callback_toggle_autorun(attivo)
 
+    def _on_toggle_computer_use(self) -> None:
+        """Chiamato quando l'utente attiva/disattiva il computer use."""
+        attivo = self._switch_computer_use.get()
+        logger.info(f"🖱️ Computer Use: {'ATTIVO' if attivo else 'DISATTIVO'}")
+
+        # Mostra/nascondi avviso
+        if attivo:
+            self._label_avviso_computer_use.pack(fill="x", padx=20, pady=(0, 5))
+        else:
+            self._label_avviso_computer_use.pack_forget()
+
+        if self._callback_toggle_computer_use:
+            self._callback_toggle_computer_use(attivo)
+
     def _on_cambio_cartella(self) -> None:
         """Apre il dialogo per selezionare la cartella di lavoro."""
         cartella = filedialog.askdirectory(
@@ -433,6 +479,20 @@ class Sidebar(ctk.CTkFrame):
         else:
             self._switch_autorun.deselect()
             self._label_avviso_autorun.pack_forget()
+
+    def imposta_computer_use(self, attivo: bool) -> None:
+        """
+        Imposta lo stato dell'interruttore computer use.
+        
+        Args:
+            attivo: True per attivare, False per disattivare
+        """
+        if attivo:
+            self._switch_computer_use.select()
+            self._label_avviso_computer_use.pack(fill="x", padx=20, pady=(0, 5))
+        else:
+            self._switch_computer_use.deselect()
+            self._label_avviso_computer_use.pack_forget()
 
     def ottieni_apikey(self) -> str:
         """Restituisce la API key attualmente inserita nel campo."""

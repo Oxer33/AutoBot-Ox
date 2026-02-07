@@ -111,28 +111,55 @@ class WrapperInterpreter:
 
             # Configura le impostazioni LLM
             # NOTA: In v0.1.x le proprietà sono: api_base, model, api_key, temperature, ecc.
-            if "api_base" in config:
-                self._interpreter.api_base = config["api_base"]
-                logger.debug(f"   API Base: {config['api_base']}")
+            modello = config.get("model", "")
 
             if "model" in config:
                 self._interpreter.model = config["model"]
                 logger.debug(f"   Modello: {config['model']}")
 
+            # IMPORTANTE: Per i modelli con prefisso 'openrouter/' NON impostare api_base!
+            # litellm gestisce il routing internamente quando vede il prefisso 'openrouter/'.
+            # Impostare api_base causerebbe un conflitto e l'errore 'Provider NOT provided'.
+            if "api_base" in config:
+                if modello.startswith("openrouter/"):
+                    # Per OpenRouter, litellm gestisce il routing dal prefisso del modello
+                    logger.debug(f"   API Base: SKIP (litellm gestisce routing openrouter/)")
+                else:
+                    self._interpreter.api_base = config["api_base"]
+                    logger.debug(f"   API Base: {config['api_base']}")
+
+            # API Key - SEMPRE necessaria!
+            # Per il locale: chiave dummy 'not-needed' (litellm la richiede comunque)
+            # Per il cloud: vera API key di OpenRouter
             if "api_key" in config:
                 self._interpreter.api_key = config["api_key"]
-                logger.debug("   API Key: [IMPOSTATA]")
+                if config["api_key"] == "not-needed":
+                    logger.debug("   API Key: [DUMMY - server locale]")
+                else:
+                    logger.debug("   API Key: [IMPOSTATA]")
 
-            if "offline" in config and config["offline"]:
+            # Modalità locale vs cloud
+            if config.get("offline", False):
                 # In v0.1.x 'local' è il flag per modalità locale
                 self._interpreter.local = True
-                logger.debug(f"   Modalità locale: True")
+                logger.debug("   Modalità locale: True")
+            else:
+                # IMPORTANTE: Imposta esplicitamente local=False per il cloud!
+                # Se prima era configurato locale e poi si switcha a cloud,
+                # senza questo reset il flag resterebbe True.
+                self._interpreter.local = False
+                logger.debug("   Modalità cloud: local=False")
 
             if "temperature" in config:
                 self._interpreter.temperature = config["temperature"]
 
             if "context_window" in config:
                 self._interpreter.context_window = config["context_window"]
+
+            # Imposta max_tokens per evitare il warning di litellm
+            # "We were unable to determine the context window of this model"
+            self._interpreter.max_tokens = 4000
+            logger.debug(f"   Max tokens: 4000")
 
             # Configurazione sicurezza
             # NOTA CRITICA: Con display=False + stream=True in v0.1.x,
@@ -160,8 +187,44 @@ REGOLE DI SICUREZZA IMPORTANTI:
 4. Prima di eseguire comandi potenzialmente distruttivi, SPIEGA cosa farai
 5. Lavora SOLO nella cartella di lavoro specificata, salvo diversa indicazione
 6. Se non sei sicuro di un'azione, CHIEDI prima di procedere
+
+HAI IL CONTROLLO DI TASTIERA E MOUSE DEL COMPUTER!
+Puoi usare queste funzioni Python per controllare il computer dell'utente.
+Il modulo è già disponibile, basta importarlo nel codice:
+
+```python
+import sys
+sys.path.insert(0, r'""" + (self._cartella_lavoro or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))).replace("\\", "\\\\") + """')
+from core.computer_use import (
+    muovi_mouse,          # muovi_mouse(x, y, durata=0.3)
+    clicca,               # clicca(x, y, pulsante="left", doppio=False)
+    trascina,             # trascina(x1, y1, x2, y2, durata=0.5)
+    scroll,               # scroll(quantita, x, y) - positivo=su, negativo=giù
+    scrivi_testo,         # scrivi_testo("ciao", intervallo=0.03)
+    scrivi_testo_clipboard,  # scrivi_testo_clipboard("testo con àèìòù")
+    premi_tasto,          # premi_tasto("enter"), premi_tasto("tab")
+    combinazione_tasti,   # combinazione_tasti("ctrl", "c") = Ctrl+C
+    tieni_premuto,        # tieni_premuto("shift", durata=0.5)
+    screenshot,           # screenshot(percorso) -> salva PNG
+    posizione_mouse,      # posizione_mouse() -> (x, y)
+    dimensione_schermo,   # dimensione_schermo() -> (larghezza, altezza)
+    trova_immagine,       # trova_immagine("pulsante.png") -> (x, y) o None
+    lista_finestre,       # lista_finestre() -> ["Titolo1", "Titolo2", ...]
+    attiva_finestra,      # attiva_finestra("Notepad") -> True/False
+    attendi,              # attendi(2.0) - pausa di 2 secondi
+    ottieni_info_sistema, # ottieni_info_sistema() -> dict con info
+)
+```
+
+REGOLE PER IL COMPUTER USE:
+- SPIEGA SEMPRE cosa stai per fare PRIMA di agire con mouse/tastiera
+- Usa movimenti lenti (durata >= 0.3s) per dare tempo all'utente di vedere
+- FAILSAFE: Se il mouse va nell'angolo in alto a sinistra, TUTTO si ferma
+- Usa screenshot() per capire cosa c'è sullo schermo prima di agire
+- Preferisci combinazione_tasti per operazioni veloci (Ctrl+C, Alt+Tab, ecc.)
+- Per testo con accenti o caratteri speciali, usa scrivi_testo_clipboard()
 """
-                logger.debug("🛡️ Regole di sicurezza aggiunte al system message")
+                logger.debug("🛡️ Regole di sicurezza e computer use aggiunte al system message")
 
             logger.info("✅ Interpreter inizializzato con successo")
             return True
