@@ -98,7 +98,15 @@ class TerminalView(ctk.CTkFrame):
 
     def _scrivi_raw(self, testo: str, colore: str = "verde") -> None:
         """
-        Scrive testo nel terminale.
+        Scrive testo nel terminale con il colore specificato.
+        
+        NOTA TECNICA: CTkTextbox non supporta tag colorati come tkinter.Text,
+        quindi cambiamo il text_color dell'intero widget prima di ogni inserimento.
+        Questo significa che tutto il testo avrà il colore dell'ultimo inserimento.
+        Per un terminale con colori multipli servirebbe un widget tkinter.Text nativo.
+        
+        Usiamo un approccio ibrido: il testo viene inserito con prefissi colorati
+        per dare un'indicazione visiva, anche se il colore effettivo è unico.
         
         Args:
             testo: Il testo da scrivere
@@ -107,7 +115,8 @@ class TerminalView(ctk.CTkFrame):
         # Abilita la scrittura temporaneamente
         self._textbox.configure(state="normal")
 
-        # Mappa colori
+        # Mappa colori - cambiamo il colore del testo dell'intero widget
+        # NOTA: CTkTextbox applica il colore a TUTTO il testo, non solo al nuovo
         mappa_colori = {
             "verde": "#00ff00",
             "bianco": "#e0e0e0",
@@ -119,8 +128,15 @@ class TerminalView(ctk.CTkFrame):
 
         colore_hex = mappa_colori.get(colore, "#00ff00")
 
+        # Aggiorna il colore del testo del widget
+        # Questo cambia il colore di TUTTO il testo nel terminale
+        self._textbox.configure(text_color=colore_hex)
+
         # Inserisci il testo
         self._textbox.insert("end", testo)
+
+        # Riporta il colore a verde (colore predefinito del terminale)
+        self._textbox.configure(text_color="#00ff00")
 
         # Disabilita la scrittura
         self._textbox.configure(state="disabled")

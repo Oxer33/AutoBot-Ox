@@ -43,18 +43,28 @@ class EsportaCronologia:
                 f.write("=" * 60 + "\n\n")
 
                 # Messaggi
+                # NOTA: In open-interpreter v0.1.x il formato dei messaggi è:
+                # {"role": "user", "message": "..."}
+                # {"role": "assistant", "message": "...", "code": "...", "language": "...", "output": "..."}
                 for msg in messaggi:
                     ruolo = msg.get("role", "sconosciuto").upper()
-                    contenuto = msg.get("content", "")
-                    tipo = msg.get("type", "message")
+                    # Supporta sia "message" (v0.1.x) che "content" (formato custom)
+                    contenuto = msg.get("message", msg.get("content", ""))
 
-                    if tipo == "message":
+                    # Scrivi il messaggio testuale
+                    if contenuto:
                         f.write(f"[{ruolo}]\n{contenuto}\n\n")
-                    elif tipo == "code":
-                        linguaggio = msg.get("format", "python")
-                        f.write(f"[{ruolo} - CODICE ({linguaggio})]\n{contenuto}\n\n")
-                    elif tipo == "console":
-                        f.write(f"[OUTPUT CONSOLE]\n{contenuto}\n\n")
+
+                    # Scrivi il codice (se presente)
+                    codice = msg.get("code", "")
+                    if codice:
+                        linguaggio = msg.get("language", "python")
+                        f.write(f"[{ruolo} - CODICE ({linguaggio})]\n{codice}\n\n")
+
+                    # Scrivi l'output (se presente)
+                    output = msg.get("output", "")
+                    if output:
+                        f.write(f"[OUTPUT CONSOLE]\n{output}\n\n")
 
                     f.write("-" * 40 + "\n\n")
 
@@ -85,22 +95,31 @@ class EsportaCronologia:
                 f.write("---\n\n")
 
                 # Messaggi
+                # NOTA: In open-interpreter v0.1.x il formato dei messaggi è:
+                # {"role": "user", "message": "..."}
+                # {"role": "assistant", "message": "...", "code": "...", "language": "...", "output": "..."}
                 for i, msg in enumerate(messaggi, 1):
                     ruolo = msg.get("role", "sconosciuto")
-                    contenuto = msg.get("content", "")
-                    tipo = msg.get("type", "message")
+                    # Supporta sia "message" (v0.1.x) che "content" (formato custom)
+                    contenuto = msg.get("message", msg.get("content", ""))
+                    codice = msg.get("code", "")
+                    output = msg.get("output", "")
+                    linguaggio = msg.get("language", "python")
 
                     if ruolo == "user":
                         f.write(f"### 👤 Utente\n\n{contenuto}\n\n")
-                    elif ruolo == "assistant" and tipo == "message":
-                        f.write(f"### 🤖 Assistente\n\n{contenuto}\n\n")
-                    elif ruolo == "assistant" and tipo == "code":
-                        linguaggio = msg.get("format", "python")
-                        f.write(f"### 💻 Codice ({linguaggio})\n\n")
-                        f.write(f"```{linguaggio}\n{contenuto}\n```\n\n")
-                    elif tipo == "console":
-                        f.write(f"### 📟 Output Console\n\n")
-                        f.write(f"```\n{contenuto}\n```\n\n")
+                    elif ruolo == "assistant":
+                        # Messaggio testuale
+                        if contenuto:
+                            f.write(f"### 🤖 Assistente\n\n{contenuto}\n\n")
+                        # Codice generato
+                        if codice:
+                            f.write(f"### 💻 Codice ({linguaggio})\n\n")
+                            f.write(f"```{linguaggio}\n{codice}\n```\n\n")
+                        # Output esecuzione
+                        if output:
+                            f.write(f"### 📟 Output Console\n\n")
+                            f.write(f"```\n{output}\n```\n\n")
 
                     f.write("---\n\n")
 

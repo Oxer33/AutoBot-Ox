@@ -234,10 +234,10 @@ REGOLE DI SICUREZZA IMPORTANTI:
             return False
 
         # Aggiungi alla cronologia
+        # NOTA: In v0.1.x il formato è {"role": "user", "message": "..."}
         self._cronologia.append({
             "role": "user",
-            "type": "message",
-            "content": messaggio
+            "message": messaggio
         })
 
         # Reset flag
