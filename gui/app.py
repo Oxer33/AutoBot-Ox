@@ -10,8 +10,6 @@
 # ============================================
 
 import logging
-import os
-import threading
 import customtkinter as ctk
 from tkinter import filedialog
 from typing import Optional

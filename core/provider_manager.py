@@ -6,7 +6,7 @@
 
 import logging
 from typing import Dict, Any, Optional, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # Logger per questo modulo
 logger = logging.getLogger("AutoBotOx.ProviderManager")

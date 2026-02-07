@@ -9,7 +9,6 @@
 # ============================================
 
 import logging
-import os
 import customtkinter as ctk
 from tkinter import filedialog
 from typing import Callable, Optional, Dict

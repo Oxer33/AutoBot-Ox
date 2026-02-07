@@ -12,9 +12,8 @@ import queue
 import time
 import logging
 import os
-import signal
-from typing import Optional, Callable, Dict, Any, List
-from dataclasses import dataclass, field
+from typing import Optional, Dict, Any, List
+from dataclasses import dataclass
 from enum import Enum
 
 # Logger per questo modulo

@@ -6,7 +6,6 @@
 
 import logging
 import customtkinter as ctk
-from typing import Optional
 from datetime import datetime
 
 # Logger per questo modulo
