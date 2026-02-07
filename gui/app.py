@@ -348,7 +348,9 @@ class AppAutoBot(ctk.CTk):
                         self._chat_view.aggiorna_stato(f"⏳ {msg.contenuto}")
 
                 elif msg.tipo == TipoMessaggio.APPROVAZIONE:
-                    # Richiesta approvazione - mostra il dialogo
+                    # Richiesta approvazione - mostra sia il dialogo popup
+                    # che la barra inline nella chat per doppia visibilità
+                    self._chat_view.mostra_approvazione(msg.contenuto)
                     self._mostra_approvazione_codice(msg.contenuto, msg.linguaggio)
 
                 # Aggiorna token counter se presente
