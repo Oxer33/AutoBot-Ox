@@ -176,21 +176,37 @@ class WrapperInterpreter:
             # Istruzioni di sistema personalizzate per sicurezza
             # NOTA: Controlliamo che non siano già state aggiunte (evita duplicati
             # quando si riconfigura l'interprete cambiando provider)
-            marcatore_sicurezza = "REGOLE DI SICUREZZA:"
+            marcatore_sicurezza = "REGOLE_AUTOBOT_OX"
             if marcatore_sicurezza not in self._interpreter.system_message:
-                self._interpreter.system_message += """
-REGOLE DI SICUREZZA:
-- NON cancellare file/cartelle senza conferma utente
-- NON modificare impostazioni di sistema critiche
-- Lavora SOLO nella cartella di lavoro specificata
+                self._interpreter.system_message += f"""
+REGOLE_AUTOBOT_OX:
+Rispondi SEMPRE in italiano. Sei un assistente AI su Windows 10.
+
+SICUREZZA:
+- NON cancellare file/cartelle senza conferma
+- Lavora SOLO nella cartella: {self._cartella_lavoro or 'quella specificata'}
 - Se non sei sicuro, CHIEDI prima
 
 COMPUTER USE - Funzioni mouse/tastiera PRE-CARICATE (NON serve importarle!):
-muovi_mouse(x,y) | clicca(x,y) | combinazione_tasti("ctrl","c") | premi_tasto("enter")
+muovi_mouse(x,y) | clicca(x,y) | doppio_click(x,y) | click_destro(x,y)
+combinazione_tasti("ctrl","c") | premi_tasto("enter") | tieni_premuto("shift")
 scrivi_testo("abc") | scrivi_testo_clipboard("testo con accenti àèì")
 screenshot("path.png") | posizione_mouse() | dimensione_schermo()
 lista_finestre() | attiva_finestra("Titolo") | attendi(secondi) | scroll(qta)
-Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
+trascina(x1,y1,x2,y2) | trova_immagine("path.png") | ottieni_info_sistema()
+
+REGOLE COMPUTER USE:
+1. Spiega SEMPRE cosa fai prima di agire con mouse/tastiera
+2. Per accenti/caratteri speciali usa scrivi_testo_clipboard()
+3. Dopo ogni azione importante, attendi(0.5) per dare tempo al sistema
+4. Per aprire siti web usa: import subprocess; subprocess.Popen(['start', url], shell=True)
+5. Per aprire programmi cerca nei path Windows comuni:
+   - Chrome: r"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+   - Edge: r"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+   - Notepad: "notepad.exe"
+   - Explorer: "explorer.exe"
+6. Usa subprocess.Popen([percorso_exe, argomenti]) per avviare programmi
+7. NON usare webbrowser.get() su Windows - spesso non funziona!
 """
                 logger.debug("🛡️ Regole sicurezza + computer use (compatto) aggiunte")
 
@@ -282,8 +298,15 @@ Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
                         code = import_block + code
                         logger.debug("🔧 Auto-inject import computer_use nel codice")
 
-                # Chiama il preprocessor originale
-                return Python._original_preprocess_code(self_ci, code)
+                # Chiama il preprocessor originale con protezione AST
+                # NOTA: Il preprocessor originale usa ast.unparse() che può crashare
+                # con certi pattern Python (es. ternary + f-string in Python 3.11)
+                # In caso di errore, ritorniamo il codice raw senza preprocessing
+                try:
+                    return Python._original_preprocess_code(self_ci, code)
+                except Exception as preprocess_err:
+                    logger.warning(f"⚠️ preprocess_code fallito (AST bug), uso codice raw: {preprocess_err}")
+                    return code
 
             # Applica il monkey-patch
             Python.preprocess_code = patched_preprocess_code
@@ -360,8 +383,27 @@ Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
 
                     kwargs["messages"] = messages
 
-                # Chiama il completion originale
-                return litellm._original_completion(*args, **kwargs)
+                # Chiama il completion originale con protezione errori vision
+                try:
+                    return litellm._original_completion(*args, **kwargs)
+                except Exception as vision_err:
+                    err_str = str(vision_err).lower()
+                    # Se l'errore è legato alla vision (modello non supporta immagini),
+                    # disabilita automaticamente, rimuovi screenshot e riprova senza
+                    if "image" in err_str or "vision" in err_str or "multimodal" in err_str:
+                        logger.warning(f"⚠️ Modello non supporta vision, disabilito: {vision_err}")
+                        vision_module.abilita_vision(False)
+                        # Rimuovi le immagini dai messaggi e riprova
+                        messages = kwargs.get("messages", [])
+                        for msg in messages:
+                            if isinstance(msg.get("content"), list):
+                                # Tieni solo il testo, rimuovi le immagini
+                                testi = [p.get("text", "") for p in msg["content"] if p.get("type") == "text"]
+                                msg["content"] = " ".join(testi) if testi else ""
+                        kwargs["messages"] = messages
+                        return litellm._original_completion(*args, **kwargs)
+                    else:
+                        raise  # Rilancia errori non legati alla vision
 
             # Applica il monkey-patch
             litellm.completion = patched_completion
@@ -533,14 +575,9 @@ Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
 
                 if chunk.get("end_of_code"):
                     in_blocco_codice = False
-                    # Invia il codice completo accumulato
-                    if codice_accumulato.strip():
-                        self._coda_messaggi.put(MessaggioInterpreter(
-                            tipo=TipoMessaggio.CODICE,
-                            contenuto=codice_accumulato,
-                            linguaggio=linguaggio_corrente
-                        ))
-                    codice_accumulato = ""
+                    # NON inviamo il codice qui! Lo invieremo dal chunk "executing"
+                    # per evitare che appaia duplicato nel terminale.
+                    # Il codice accumulato serve solo come backup se "executing" non arriva.
                     logger.debug("💻 Fine blocco codice dall'IA")
                     continue
 
@@ -649,9 +686,48 @@ Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
         except Exception as e:
             error_msg = str(e)
             logger.error(f"❌ Errore durante l'elaborazione: {error_msg}")
+            
+            # Messaggi di errore più chiari in base al tipo di errore
+            err_lower = error_msg.lower()
+            if "image" in err_lower or "vision" in err_lower or "multimodal" in err_lower:
+                msg_utente = (
+                    f"Errore Vision: {error_msg}\n\n"
+                    "Il modello attuale non supporta immagini.\n"
+                    "Vision è stata disabilitata automaticamente.\n"
+                    "Usa un modello vision (GPT-4o, Claude 3, Gemini Pro) oppure disattiva Vision."
+                )
+                # Auto-disabilita la vision
+                try:
+                    from core import vision
+                    vision.abilita_vision(False)
+                except Exception:
+                    pass
+            elif "api_key" in err_lower or "authentication" in err_lower or "401" in err_lower:
+                msg_utente = (
+                    f"Errore API Key: {error_msg}\n\n"
+                    "La chiave API non è valida o mancante.\n"
+                    "Inserisci una API key valida nella sidebar."
+                )
+            elif "connection" in err_lower or "timeout" in err_lower or "unreachable" in err_lower:
+                msg_utente = (
+                    f"Errore Connessione: {error_msg}\n\n"
+                    "Impossibile raggiungere il server LLM.\n"
+                    "1. Verifica che il server locale sia attivo\n"
+                    "2. Controlla la connessione internet\n"
+                    "3. Riprova tra qualche secondo"
+                )
+            else:
+                msg_utente = (
+                    f"Errore: {error_msg}\n\n"
+                    "Prova a:\n"
+                    "1. Verificare che il server LLM sia attivo\n"
+                    "2. Controllare la connessione internet\n"
+                    "3. Verificare la API key"
+                )
+            
             self._coda_messaggi.put(MessaggioInterpreter(
                 tipo=TipoMessaggio.ERRORE,
-                contenuto=f"Errore: {error_msg}\n\nProva a:\n1. Verificare che il server LLM sia attivo\n2. Controllare la connessione internet\n3. Verificare la API key"
+                contenuto=msg_utente
             ))
 
         finally:

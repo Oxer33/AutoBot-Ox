@@ -5,9 +5,12 @@
 # ============================================
 
 import logging
+import tkinter as tk
 import customtkinter as ctk
 from typing import Callable, Optional
 from datetime import datetime
+
+from utils.markdown_renderer import configura_tag_markdown, inserisci_markdown
 
 # Logger per questo modulo
 logger = logging.getLogger("AutoBotOx.GUI.ChatView")
@@ -86,19 +89,65 @@ class BollaMessaggio(ctk.CTkFrame):
             text_color="gray60"
         ).pack(side="right")
 
-        # Contenuto del messaggio
-        # Salviamo il riferimento per poter aggiornare il testo in-place
-        # durante lo streaming (evita flickering da destroy/recreate)
-        self.label_contenuto = ctk.CTkLabel(
+        # Contenuto del messaggio con rendering markdown
+        # Usiamo tkinter.Text per supportare grassetto, corsivo, headers, ecc.
+        # CTkLabel non supporta rich text, quindi usiamo il Text nativo.
+        self.text_contenuto = tk.Text(
             bolla_frame,
-            text=contenuto,
-            font=ctk.CTkFont(size=13),
-            text_color=stile["fg"],
-            wraplength=500,
-            justify="left",
-            anchor="w"
+            font=("Segoe UI", 13),
+            fg=stile["fg"],
+            bg=stile["bg"],
+            wrap="word",
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=0,
+            padx=10,
+            pady=5,
+            cursor="arrow",           # Cursore normale, non da editing
+            state="disabled",          # Solo lettura
+            height=1                   # Altezza minima, si adatta al contenuto
         )
-        self.label_contenuto.pack(fill="x", padx=10, pady=(2, 10))
+        self.text_contenuto.pack(fill="x", padx=2, pady=(2, 8))
+        
+        # Configura i tag markdown sul widget
+        configura_tag_markdown(self.text_contenuto, colore_testo=stile["fg"])
+        
+        # Inserisci il contenuto con formattazione markdown
+        self._imposta_testo(contenuto)
+    
+    def _imposta_testo(self, testo: str) -> None:
+        """
+        Imposta il testo del messaggio con formattazione markdown.
+        Gestisce anche l'auto-ridimensionamento dell'altezza del widget.
+        
+        Args:
+            testo: Il testo markdown da mostrare
+        """
+        self.text_contenuto.configure(state="normal")
+        self.text_contenuto.delete("1.0", "end")
+        inserisci_markdown(self.text_contenuto, testo)
+        
+        # Rimuovi l'ultimo \n in eccesso se presente
+        contenuto = self.text_contenuto.get("1.0", "end-1c")
+        if contenuto.endswith("\n"):
+            self.text_contenuto.delete("end-2c", "end-1c")
+        
+        self.text_contenuto.configure(state="disabled")
+        
+        # Auto-ridimensiona l'altezza in base al contenuto
+        self._adatta_altezza()
+    
+    def _adatta_altezza(self) -> None:
+        """
+        Adatta l'altezza del widget Text al contenuto.
+        tkinter.Text non lo fa automaticamente, quindi calcoliamo
+        il numero di righe necessarie e impostiamo l'altezza.
+        """
+        self.text_contenuto.update_idletasks()
+        # Conta le righe reali (considerando il word wrap)
+        num_righe = int(self.text_contenuto.index("end-1c").split(".")[0])
+        # Aggiungi un po' di spazio extra per il word wrap
+        self.text_contenuto.configure(height=max(1, num_righe))
 
 
 class ChatView(ctk.CTkFrame):
@@ -355,6 +404,11 @@ class ChatView(ctk.CTkFrame):
         Aggiunge testo in streaming (pezzo per pezzo) all'ultimo messaggio.
         Usato per mostrare la risposta dell'IA in tempo reale.
         
+        OTTIMIZZAZIONE PERFORMANCE:
+        Durante lo streaming, appendiamo testo RAW al widget Text senza
+        ri-parsare tutto il markdown ogni volta (troppo costoso con molti token).
+        Il rendering markdown completo viene fatto in finalizza_streaming().
+        
         Args:
             testo: Il nuovo pezzo di testo da aggiungere
         """
@@ -365,27 +419,34 @@ class ChatView(ctk.CTkFrame):
             self._label_streaming = BollaMessaggio(
                 self._scroll_frame,
                 ruolo="assistant",
-                contenuto=self._testo_streaming
+                contenuto=""  # Vuoto, appendiamo dopo
             )
             self._label_streaming.pack(fill="x", padx=5, pady=2)
-        else:
-            # Aggiorna il testo IN-PLACE senza distruggere/ricreare la bolla
-            # Questo evita il flickering ad ogni carattere durante lo streaming
-            self._label_streaming.label_contenuto.configure(
-                text=self._testo_streaming
-            )
+
+        # Appendi il nuovo testo RAW (senza ri-parsare tutto il markdown)
+        # Questo è molto più veloce perché non rifa il clear+parse completo
+        widget = self._label_streaming.text_contenuto
+        widget.configure(state="normal")
+        widget.insert("end", testo, "normale")
+        widget.configure(state="disabled")
+
+        # Aggiorna l'altezza periodicamente per adattarla al contenuto
+        if len(self._testo_streaming) % 50 == 0 or len(testo) > 5:
+            self._label_streaming._adatta_altezza()
 
         # Scrolla solo ogni N caratteri per evitare overhead
-        if len(self._testo_streaming) % 20 == 0 or len(testo) > 5:
+        if len(self._testo_streaming) % 30 == 0 or len(testo) > 5:
             self._scroll_in_basso()
 
     def finalizza_streaming(self) -> None:
         """
         Chiamato quando lo streaming è completato.
-        Resetta le variabili di streaming per il prossimo messaggio.
+        Applica il rendering markdown completo al testo accumulato
+        e resetta le variabili di streaming per il prossimo messaggio.
         """
-        # Scroll finale per assicurarsi che l'ultimo testo sia visibile
-        if self._testo_streaming:
+        # Rendering markdown finale: ri-renderizza il testo completo con formattazione
+        if self._testo_streaming and self._label_streaming:
+            self._label_streaming._imposta_testo(self._testo_streaming)
             self._scroll_in_basso()
         self._testo_streaming = ""
         self._label_streaming = None

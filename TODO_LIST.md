@@ -87,6 +87,18 @@
 - ✅ Aggiornato default_config.json con `vision: false`
 - ✅ Aggiornato ARCHITETTURA.md con note tecniche vision e monkey-patch
 
+## Fase 10: Fix Stabilità + Markdown + Error Handling ✅
+- ✅ Fix crash AST `preprocess_code`: try-except + fallback a codice raw (TypeError unhashable list)
+- ✅ Fix vision graceful fallback: auto-disabilita se modello non supporta immagini + retry senza
+- ✅ Fix codice duplicato nel terminale: rimosso invio da `end_of_code`, solo da `executing`
+- ✅ Rendering markdown nella chat: `utils/markdown_renderer.py` con `tkinter.Text` + tag
+  - Supporta: **grassetto**, *corsivo*, `codice inline`, ```blocchi codice```, # headers, liste
+  - Ottimizzazione streaming: testo raw durante streaming, markdown completo alla finalizzazione
+- ✅ System message migliorato: forza italiano, path Windows (Chrome/Edge/Notepad), regole computer_use dettagliate, no webbrowser.get()
+- ✅ Error handling differenziato: messaggi specifici per vision/api_key/connessione
+- ✅ Auto-disabilitazione vision nel catch errori generali `_elabora_messaggio`
+- ✅ Build test: 13 file compilati senza errori, app avviata con successo
+
 ## Miglioramenti Futuri ⏳
 - ⏳ 🟡 Crittografia API key con libreria cryptography
 - ⏳ 🟢 Supporto temi personalizzabili
@@ -95,7 +107,8 @@
 - ⏳ 🟢 Voice input
 - ⏳ 🟢 Più provider LLM
 - ⏳ 🟢 Terminale con colori multipli (tkinter.Text nativo)
+- ⏳ 🟢 Streaming markdown progressivo (rendering parziale durante streaming)
 
 ---
 
-*Ultimo aggiornamento: 2026-02-07 16:40*
+*Ultimo aggiornamento: 2026-02-07 22:15*

@@ -11,6 +11,8 @@ AutoBot Ox è un'applicazione desktop che funge da interfaccia grafica per **Ope
 | Open Interpreter | 0.1.11 | Core AI (esecuzione comandi) |
 | Requests | 2.32.3 | HTTP per health check |
 | psutil | 6.1.1 | Monitoraggio sistema |
+| Pillow | 11.1.0 | Gestione immagini (Vision) |
+| Tkinter (Text) | built-in | Rich text markdown nella chat |
 | PyAutoGUI | 0.9.54 | Controllo mouse e tastiera |
 | pyperclip | 1.11.0 | Clipboard per testo Unicode |
 | PyInstaller | 6.11.1 | Packaging EXE portable |
@@ -53,7 +55,8 @@ AutoBot Ox/
 │   ├── __init__.py                #    Inizializzazione modulo
 │   ├── logger.py                  #    Sistema di logging (console + file)
 │   ├── token_counter.py           #    Contatore token per OpenRouter
-│   └── history_export.py          #    Esportazione cronologia (TXT/MD)
+│   ├── history_export.py          #    Esportazione cronologia (TXT/MD)
+│   └── markdown_renderer.py       #    Rendering markdown → rich text (tkinter.Text)
 │
 ├── logs/                          # 📝 File di log (auto-generati)
 ├── output/                        # 📦 EXE compilato (dopo build)
@@ -151,6 +154,13 @@ AutoBot Ox/
 - [x] Fix computer_use nel subprocess: auto-abilita flag + auto-inject import
 - [x] Fix chat flickering: aggiornamento in-place label durante streaming
 - [x] Monkey-patch litellm.completion per vision multimodale
+- [x] Fix crash AST preprocess_code: try-except + fallback a codice raw
+- [x] Fix vision graceful fallback: auto-disabilita + retry senza immagini
+- [x] Fix codice duplicato terminale: invio solo da chunk 'executing'
+- [x] Rendering markdown nella chat: bold, italic, headers, liste, codice
+- [x] System message migliorato: italiano, path Windows, regole computer_use
+- [x] Error handling specifico: vision/api_key/connessione con messaggi chiari
+- [x] Nuovo modulo utils/markdown_renderer.py per rich text
 
 ## Note Tecniche Importanti
 
@@ -172,6 +182,18 @@ AutoBot Ox/
 - Lo screenshot viene catturato PRIMA di inviare il messaggio e iniettato DOPO tokentrim
 - Formato multimodale: `{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}`
 - Serve un modello con capacità vision (GPT-4o, Claude 3, Gemini Pro, ecc.)
+- **Graceful fallback**: Se il modello non supporta immagini, la vision viene disabilitata automaticamente e il messaggio viene reinviato senza immagini
+
+### Markdown Renderer (utils/markdown_renderer.py)
+- Converte testo markdown in rich text all'interno di widget `tkinter.Text` con tag
+- Pattern supportati: **grassetto**, *corsivo*, ***grassetto corsivo***, `codice inline`, ```blocchi codice```, # headers (h1/h2/h3), liste puntate (- •), liste numerate
+- Usato nella chat per formattare le risposte dell'IA
+- Durante lo streaming: testo raw appeso per performance; alla finalizzazione: re-rendering completo con markdown
+
+### Error Handling
+- Messaggi di errore differenziati in base al tipo: vision, api_key, connessione, generico
+- Auto-disabilitazione vision se il modello non supporta immagini
+- Fallback AST nel preprocess_code: se `ast.unparse()` crasha, il codice viene passato raw
 
 ## Componenti Futuri / Miglioramenti Possibili
 - [ ] Crittografia API key con libreria cryptography
@@ -182,3 +204,4 @@ AutoBot Ox/
 - [ ] Integrazione con più provider LLM (Anthropic, OpenAI, ecc.)
 - [ ] Voice input (microfono)
 - [ ] Terminale con colori multipli (tkinter.Text nativo invece di CTkTextbox)
+- [ ] Streaming markdown progressivo (rendering parziale durante lo streaming)
