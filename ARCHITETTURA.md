@@ -117,8 +117,8 @@ AutoBot Ox/
 ## Sicurezza
 
 1. **API Key**: Non hardcodata, salvata nel file utente locale (gitignored)
-2. **Auto-Run**: Disattivato di default, richiede conferma per ogni esecuzione
-3. **System Message**: Include regole di sicurezza per impedire azioni distruttive
+2. **Auto-Run**: Disattivato di default. NOTA: In open-interpreter v0.1.x con `display=False`, il flag `auto_run` dell'interprete NON ha effetto. L'approvazione è gestita nel nostro `WrapperInterpreter` intercettando il chunk `{"executing": ...}` e bloccando il thread finché l'utente non risponde dalla GUI. Se rifiutato, il generatore viene interrotto (GeneratorExit) e il codice non viene eseguito.
+3. **System Message**: Include regole di sicurezza per impedire azioni distruttive. Viene aggiunto una sola volta (marcatore anti-duplicazione).
 4. **Emergency Stop**: Pulsante per interrompere immediatamente qualsiasi operazione
 5. **Cartella di Lavoro**: L'IA opera solo nella cartella specificata dall'utente
 
