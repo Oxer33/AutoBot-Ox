@@ -8,7 +8,7 @@ AutoBot Ox è un'applicazione desktop che funge da interfaccia grafica per **Ope
 |---|---|---|
 | Python | 3.10+ | Linguaggio principale |
 | CustomTkinter | 5.2.2 | GUI framework (tema scuro) |
-| Open Interpreter | 0.4.3 | Core AI (esecuzione comandi) |
+| Open Interpreter | 0.1.11 | Core AI (esecuzione comandi) |
 | Requests | 2.32.3 | HTTP per health check |
 | psutil | 6.1.1 | Monitoraggio sistema |
 | PyInstaller | 6.11.1 | Packaging EXE portable |
