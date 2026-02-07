@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+*.spec
+
+# Configurazione locale (contiene API keys!)
+config/user_config.json
+.env
+
+# Ambiente virtuale
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build
+*.exe
+output/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Log
+logs/
+*.log
+
+# Nota: Le cartelle "DA CANCELLARE/" e "CODICE MORTO.py"
+# sono tracciate nel repo per documentazione

@@ -1,0 +1,26 @@
+# ============================================
+# AutoBot Ox - Dipendenze
+# ============================================
+
+# Core - Open Interpreter (il cuore del progetto)
+# Nota: la versione su PyPI è 0.1.11 (ultima disponibile)
+open-interpreter==0.1.11
+
+# GUI - CustomTkinter (interfaccia moderna dark mode)
+customtkinter==5.2.2
+
+# Richieste HTTP (per health check e API calls)
+requests==2.32.3
+
+# Gestione variabili ambiente
+python-dotenv==1.0.1
+
+# Crittografia per salvare API key in modo sicuro
+cryptography==44.0.0
+
+# Packaging per creare l'EXE portable
+pyinstaller==6.11.1
+
+# Utilità
+psutil==6.1.1
+Pillow==11.1.0

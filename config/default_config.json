@@ -1,0 +1,40 @@
+{
+    "app": {
+        "nome": "AutoBot Ox",
+        "versione": "1.0.0",
+        "lingua": "it",
+        "tema": "scuro"
+    },
+    "provider_attivo": "locale",
+    "provider_locale": {
+        "nome": "LLM Locale (LM Studio / Ollama)",
+        "api_base": "http://localhost:1234/v1",
+        "modello": "openai/local",
+        "offline": true,
+        "timeout_secondi": 30
+    },
+    "provider_cloud": {
+        "nome": "DeepSeek R1 (OpenRouter)",
+        "api_base": "https://openrouter.ai/api/v1",
+        "modello": "deepseek/deepseek-r1-0528:free",
+        "api_key": "",
+        "timeout_secondi": 60
+    },
+    "sicurezza": {
+        "auto_run": false,
+        "safe_mode": "ask",
+        "cartella_lavoro": "",
+        "conferma_prima_esecuzione": true
+    },
+    "interfaccia": {
+        "dimensione_finestra": "1400x900",
+        "font_size_chat": 14,
+        "font_size_terminale": 12,
+        "mostra_token_counter": true,
+        "mostra_log_sistema": true
+    },
+    "health_check": {
+        "intervallo_secondi": 5,
+        "abilitato": true
+    }
+}
