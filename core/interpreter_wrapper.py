@@ -135,7 +135,12 @@ class WrapperInterpreter:
                 self._interpreter.context_window = config["context_window"]
 
             # Configurazione sicurezza
-            self._interpreter.auto_run = self._auto_run
+            # NOTA CRITICA: Con display=False + stream=True in v0.1.x,
+            # il flag auto_run dell'interpreter NON ha effetto!
+            # Il codice viene sempre eseguito automaticamente.
+            # Impostiamo auto_run=True a livello interpreter e gestiamo
+            # l'approvazione nel nostro wrapper intercettando il chunk 'executing'.
+            self._interpreter.auto_run = True
             self._interpreter.safe_mode = "off"  # Gestiamo noi la sicurezza
 
             # Disabilita procedure online per privacy
@@ -370,17 +375,58 @@ REGOLE DI SICUREZZA IMPORTANTI:
                             ruolo="computer"
                         ))
 
-                # --- CONTENUTO: Info esecuzione ---
+                # --- CONTENUTO: Info esecuzione (APPROVAZIONE CODICE) ---
+                # Questo chunk arriva PRIMA dell'esecuzione del codice.
+                # Se interrompiamo il generatore qui (break), il codice NON verrà eseguito.
+                # Questo è il meccanismo con cui gestiamo l'approvazione nella GUI.
                 if "executing" in chunk:
                     info_exec = chunk["executing"]
                     codice_exec = info_exec.get("code", "")
                     lang_exec = info_exec.get("language", "python")
+
                     if codice_exec:
+                        # Mostra il codice nel terminale GUI
                         self._coda_messaggi.put(MessaggioInterpreter(
                             tipo=TipoMessaggio.CODICE,
                             contenuto=codice_exec,
                             linguaggio=lang_exec
                         ))
+
+                        # Se auto_run è DISATTIVATO, chiediamo approvazione all'utente
+                        if not self._auto_run:
+                            logger.info("⏸️ Auto-run OFF: in attesa approvazione utente...")
+                            self._in_attesa_approvazione = True
+                            self._approvazione_risposta = None
+
+                            # Invia richiesta di approvazione alla GUI
+                            self._coda_messaggi.put(MessaggioInterpreter(
+                                tipo=TipoMessaggio.APPROVAZIONE,
+                                contenuto=codice_exec,
+                                linguaggio=lang_exec
+                            ))
+
+                            # Blocca il thread finché l'utente non risponde
+                            # (o finché non viene premuto STOP)
+                            while self._approvazione_risposta is None:
+                                if self._stop_richiesto:
+                                    logger.info("🛑 STOP durante attesa approvazione")
+                                    self._in_attesa_approvazione = False
+                                    break
+                                time.sleep(0.1)  # Polling ogni 100ms
+
+                            self._in_attesa_approvazione = False
+
+                            # Se l'utente ha RIFIUTATO o premuto STOP:
+                            # interrompiamo il generatore -> il codice NON verrà eseguito
+                            if self._approvazione_risposta is not True or self._stop_richiesto:
+                                logger.info("❌ Codice RIFIUTATO dall'utente, non eseguito")
+                                self._coda_messaggi.put(MessaggioInterpreter(
+                                    tipo=TipoMessaggio.STATO,
+                                    contenuto="⚠️ Esecuzione codice rifiutata dall'utente"
+                                ))
+                                break  # GeneratorExit -> codice non eseguito
+
+                            logger.info("✅ Codice APPROVATO dall'utente, esecuzione in corso...")
 
             # Fine elaborazione
             # Salva la risposta nella cronologia
