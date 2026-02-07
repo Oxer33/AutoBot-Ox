@@ -253,6 +253,13 @@ class AppAutoBot(ctk.CTk):
         auto_run = self._impostazioni.auto_run
         self._sidebar.imposta_autorun(auto_run)
 
+        # Computer Use (controllo mouse/tastiera)
+        cu_attivo = self._impostazioni.ottieni("sicurezza.computer_use", False)
+        self._sidebar.imposta_computer_use(cu_attivo)
+        if cu_attivo:
+            computer_use.abilita_computer_use(True)
+            logger.info("🖱️ Computer Use ripristinato: ATTIVO")
+
         # Cartella di lavoro
         cartella = self._impostazioni.cartella_lavoro
         self._sidebar.imposta_cartella(cartella)
