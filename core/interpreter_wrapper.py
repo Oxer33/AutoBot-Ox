@@ -176,55 +176,28 @@ class WrapperInterpreter:
             # Istruzioni di sistema personalizzate per sicurezza
             # NOTA: Controlliamo che non siano già state aggiunte (evita duplicati
             # quando si riconfigura l'interprete cambiando provider)
-            marcatore_sicurezza = "REGOLE DI SICUREZZA IMPORTANTI:"
+            marcatore_sicurezza = "REGOLE DI SICUREZZA:"
             if marcatore_sicurezza not in self._interpreter.system_message:
                 self._interpreter.system_message += """
+REGOLE DI SICUREZZA:
+- NON cancellare file/cartelle senza conferma utente
+- NON modificare impostazioni di sistema critiche
+- Lavora SOLO nella cartella di lavoro specificata
+- Se non sei sicuro, CHIEDI prima
 
-REGOLE DI SICUREZZA IMPORTANTI:
-1. NON cancellare MAI file o cartelle senza esplicita conferma dell'utente
-2. NON formattare MAI dischi o partizioni
-3. NON modificare MAI impostazioni di sistema critiche
-4. Prima di eseguire comandi potenzialmente distruttivi, SPIEGA cosa farai
-5. Lavora SOLO nella cartella di lavoro specificata, salvo diversa indicazione
-6. Se non sei sicuro di un'azione, CHIEDI prima di procedere
-
-HAI IL CONTROLLO DI TASTIERA E MOUSE DEL COMPUTER!
-Puoi usare queste funzioni Python per controllare il computer dell'utente.
-Il modulo è già disponibile, basta importarlo nel codice:
-
-```python
-import sys
-sys.path.insert(0, r'""" + os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("\\", "\\\\") + """')
-from core.computer_use import (
-    muovi_mouse,          # muovi_mouse(x, y, durata=0.3)
-    clicca,               # clicca(x, y, pulsante="left", doppio=False)
-    trascina,             # trascina(x1, y1, x2, y2, durata=0.5)
-    scroll,               # scroll(quantita, x, y) - positivo=su, negativo=giù
-    scrivi_testo,         # scrivi_testo("ciao", intervallo=0.03)
-    scrivi_testo_clipboard,  # scrivi_testo_clipboard("testo con àèìòù")
-    premi_tasto,          # premi_tasto("enter"), premi_tasto("tab")
-    combinazione_tasti,   # combinazione_tasti("ctrl", "c") = Ctrl+C
-    tieni_premuto,        # tieni_premuto("shift", durata=0.5)
-    screenshot,           # screenshot(percorso) -> salva PNG
-    posizione_mouse,      # posizione_mouse() -> (x, y)
-    dimensione_schermo,   # dimensione_schermo() -> (larghezza, altezza)
-    trova_immagine,       # trova_immagine("pulsante.png") -> (x, y) o None
-    lista_finestre,       # lista_finestre() -> ["Titolo1", "Titolo2", ...]
-    attiva_finestra,      # attiva_finestra("Notepad") -> True/False
-    attendi,              # attendi(2.0) - pausa di 2 secondi
-    ottieni_info_sistema, # ottieni_info_sistema() -> dict con info
-)
-```
-
-REGOLE PER IL COMPUTER USE:
-- SPIEGA SEMPRE cosa stai per fare PRIMA di agire con mouse/tastiera
-- Usa movimenti lenti (durata >= 0.3s) per dare tempo all'utente di vedere
-- FAILSAFE: Se il mouse va nell'angolo in alto a sinistra, TUTTO si ferma
-- Usa screenshot() per capire cosa c'è sullo schermo prima di agire
-- Preferisci combinazione_tasti per operazioni veloci (Ctrl+C, Alt+Tab, ecc.)
-- Per testo con accenti o caratteri speciali, usa scrivi_testo_clipboard()
+COMPUTER USE - Funzioni mouse/tastiera PRE-CARICATE (NON serve importarle!):
+muovi_mouse(x,y) | clicca(x,y) | combinazione_tasti("ctrl","c") | premi_tasto("enter")
+scrivi_testo("abc") | scrivi_testo_clipboard("testo con accenti àèì")
+screenshot("path.png") | posizione_mouse() | dimensione_schermo()
+lista_finestre() | attiva_finestra("Titolo") | attendi(secondi) | scroll(qta)
+Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
 """
-                logger.debug("🛡️ Regole di sicurezza e computer use aggiunte al system message")
+                logger.debug("🛡️ Regole sicurezza + computer use (compatto) aggiunte")
+
+            # Monkey-patch: auto-inject imports computer_use nel codice Python
+            # Così l'IA non deve scrivere gli import manualmente ogni volta
+            self._installa_auto_import_computer_use()
+            logger.debug("� Auto-import computer_use installato")
 
             logger.info("✅ Interpreter inizializzato con successo")
             return True
@@ -243,6 +216,74 @@ REGOLE PER IL COMPUTER USE:
                 contenuto=f"Errore inizializzazione: {str(e)}"
             ))
             return False
+
+    def _installa_auto_import_computer_use(self) -> None:
+        """
+        Monkey-patch del Python code interpreter di Open Interpreter.
+        Inietta automaticamente gli import di computer_use in OGNI blocco
+        di codice Python generato dall'IA, così l'IA non deve scriverli.
+        
+        Funziona sovrascrivendo il metodo preprocess_code della classe Python
+        per preporre le istruzioni di import prima del codice dell'IA.
+        """
+        try:
+            from interpreter.code_interpreters.languages.python import Python
+            from core import computer_use as cu_module
+
+            # Salva il metodo originale (se non già salvato)
+            if not hasattr(Python, '_original_preprocess_code'):
+                Python._original_preprocess_code = Python.preprocess_code
+
+            # Calcola il path del progetto per sys.path
+            project_root = os.path.dirname(
+                os.path.dirname(os.path.abspath(__file__))
+            ).replace("\\", "\\\\")
+
+            # Blocco di import da preporre al codice Python dell'IA
+            import_block = (
+                f"import sys\n"
+                f"if r'{project_root}' not in sys.path:\n"
+                f"    sys.path.insert(0, r'{project_root}')\n"
+                f"from core.computer_use import *\n"
+            )
+
+            def patched_preprocess_code(self_ci, code):
+                """
+                Preprocess che inietta gli import di computer_use
+                SOLO se il computer use è abilitato E il codice usa
+                una delle funzioni di computer_use.
+                """
+                # Lista delle funzioni computer_use che l'IA potrebbe usare
+                funzioni_cu = [
+                    'muovi_mouse', 'clicca', 'trascina', 'scroll',
+                    'scrivi_testo', 'scrivi_testo_clipboard',
+                    'premi_tasto', 'combinazione_tasti', 'tieni_premuto',
+                    'screenshot', 'posizione_mouse', 'dimensione_schermo',
+                    'trova_immagine', 'lista_finestre', 'attiva_finestra',
+                    'attendi', 'ottieni_info_sistema'
+                ]
+
+                # Controlla se il computer use è abilitato E il codice
+                # usa almeno una funzione di computer_use
+                if cu_module.is_abilitato():
+                    usa_cu = any(f in code for f in funzioni_cu)
+                    gia_importato = 'from core.computer_use' in code
+
+                    if usa_cu and not gia_importato:
+                        code = import_block + code
+                        logger.debug("🔧 Auto-inject import computer_use nel codice")
+
+                # Chiama il preprocessor originale
+                return Python._original_preprocess_code(self_ci, code)
+
+            # Applica il monkey-patch
+            Python.preprocess_code = patched_preprocess_code
+            logger.info("🔧 Monkey-patch Python preprocess_code installato per auto-import")
+
+        except ImportError as e:
+            logger.warning(f"⚠️ Impossibile installare auto-import computer_use: {e}")
+        except Exception as e:
+            logger.error(f"❌ Errore installazione auto-import: {e}")
 
     def riconfigura(self, config: Dict[str, Any]) -> bool:
         """

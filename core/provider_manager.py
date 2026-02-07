@@ -76,7 +76,7 @@ class GestoreProvider:
             api_key="not-needed",
             offline=True,       # Il locale non ha bisogno di internet
             timeout=timeout,
-            contesto_max=4096   # I modelli locali hanno spesso un contesto ridotto
+            contesto_max=16384  # LM Studio supporta 8k-32k, usiamo 16k come default
         )
         logger.info(f"✅ Provider locale registrato: {api_base} - Modello: {modello}")
 
