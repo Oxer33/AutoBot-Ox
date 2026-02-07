@@ -31,6 +31,7 @@ from core.interpreter_wrapper import WrapperInterpreter, TipoMessaggio
 from core.provider_manager import GestoreProvider
 from core.health_check import ControlloSalute
 from core import computer_use
+from core import vision
 
 # Importa le utilità
 from config.settings import GestoreImpostazioni
@@ -166,6 +167,7 @@ class AppAutoBot(ctk.CTk):
             callback_cambio_provider=self._on_cambio_provider,
             callback_toggle_autorun=self._on_toggle_autorun,
             callback_toggle_computer_use=self._on_toggle_computer_use,
+            callback_toggle_vision=self._on_toggle_vision,
             callback_cambio_cartella=self._on_cambio_cartella,
             callback_nuova_chat=self._on_nuova_chat,
             callback_export=self._on_export_cronologia,
@@ -259,6 +261,13 @@ class AppAutoBot(ctk.CTk):
         if cu_attivo:
             computer_use.abilita_computer_use(True)
             logger.info("🖱️ Computer Use ripristinato: ATTIVO")
+
+        # Vision (screenshot al modello)
+        vis_attivo = self._impostazioni.ottieni("sicurezza.vision", False)
+        self._sidebar.imposta_vision(vis_attivo)
+        if vis_attivo:
+            vision.abilita_vision(True)
+            logger.info("👁️ Vision ripristinata: ATTIVA")
 
         # Cartella di lavoro
         cartella = self._impostazioni.cartella_lavoro
@@ -467,6 +476,31 @@ class AppAutoBot(ctk.CTk):
         
         # Salva nelle impostazioni
         self._impostazioni.imposta("sicurezza.computer_use", attivo)
+        self._impostazioni.salva()
+
+    def _on_toggle_vision(self, attivo: bool) -> None:
+        """
+        Callback: l'utente ha attivato/disattivato la vision (screenshot al modello).
+        
+        Args:
+            attivo: True se vision è attiva
+        """
+        vision.abilita_vision(attivo)
+
+        if attivo:
+            self._terminal_view.scrivi_stato(
+                "👁️ Vision ATTIVATA - Screenshot inviati al modello con ogni messaggio"
+            )
+            self._terminal_view.scrivi_log(
+                "Serve un modello con capacità vision (GPT-4o, Claude 3, Gemini Pro, ecc.)"
+            )
+        else:
+            self._terminal_view.scrivi_stato("👁️ Vision DISATTIVATA")
+
+        logger.info(f"👁️ Vision: {'ATTIVA' if attivo else 'DISATTIVATA'}")
+        
+        # Salva nelle impostazioni
+        self._impostazioni.imposta("sicurezza.vision", attivo)
         self._impostazioni.salva()
 
     def _on_cambio_cartella(self, cartella: str) -> None:

@@ -87,7 +87,9 @@ class BollaMessaggio(ctk.CTkFrame):
         ).pack(side="right")
 
         # Contenuto del messaggio
-        label_contenuto = ctk.CTkLabel(
+        # Salviamo il riferimento per poter aggiornare il testo in-place
+        # durante lo streaming (evita flickering da destroy/recreate)
+        self.label_contenuto = ctk.CTkLabel(
             bolla_frame,
             text=contenuto,
             font=ctk.CTkFont(size=13),
@@ -96,7 +98,7 @@ class BollaMessaggio(ctk.CTkFrame):
             justify="left",
             anchor="w"
         )
-        label_contenuto.pack(fill="x", padx=10, pady=(2, 10))
+        self.label_contenuto.pack(fill="x", padx=10, pady=(2, 10))
 
 
 class ChatView(ctk.CTkFrame):
@@ -367,17 +369,15 @@ class ChatView(ctk.CTkFrame):
             )
             self._label_streaming.pack(fill="x", padx=5, pady=2)
         else:
-            # Aggiorna il contenuto della bolla esistente
-            # Rimuovi e ricrea (CustomTkinter non supporta aggiornamento diretto del testo nelle label wrappate)
-            self._label_streaming.destroy()
-            self._label_streaming = BollaMessaggio(
-                self._scroll_frame,
-                ruolo="assistant",
-                contenuto=self._testo_streaming
+            # Aggiorna il testo IN-PLACE senza distruggere/ricreare la bolla
+            # Questo evita il flickering ad ogni carattere durante lo streaming
+            self._label_streaming.label_contenuto.configure(
+                text=self._testo_streaming
             )
-            self._label_streaming.pack(fill="x", padx=5, pady=2)
 
-        self._scroll_in_basso()
+        # Scrolla solo ogni N caratteri per evitare overhead
+        if len(self._testo_streaming) % 20 == 0 or len(testo) > 5:
+            self._scroll_in_basso()
 
     def finalizza_streaming(self) -> None:
         """

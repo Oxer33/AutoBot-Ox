@@ -197,7 +197,12 @@ Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
             # Monkey-patch: auto-inject imports computer_use nel codice Python
             # Così l'IA non deve scrivere gli import manualmente ogni volta
             self._installa_auto_import_computer_use()
-            logger.debug("� Auto-import computer_use installato")
+            logger.debug("🔧 Auto-import computer_use installato")
+
+            # Monkey-patch: inietta screenshot nel messaggio litellm
+            # quando la vision è abilitata (modelli con capacità immagini)
+            self._installa_vision_litellm()
+            logger.debug("👁️ Vision litellm monkey-patch installato")
 
             logger.info("✅ Interpreter inizializzato con successo")
             return True
@@ -240,11 +245,15 @@ Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
             ).replace("\\", "\\\\")
 
             # Blocco di import da preporre al codice Python dell'IA
+            # NOTA CRITICA: Dobbiamo anche chiamare abilita_computer_use(True)
+            # perché il codice gira in un SUBPROCESS separato dove il flag
+            # _computer_use_abilitato è False (è True solo nel processo principale)
             import_block = (
                 f"import sys\n"
                 f"if r'{project_root}' not in sys.path:\n"
                 f"    sys.path.insert(0, r'{project_root}')\n"
                 f"from core.computer_use import *\n"
+                f"abilita_computer_use(True)\n"
             )
 
             def patched_preprocess_code(self_ci, code):
@@ -284,6 +293,84 @@ Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
             logger.warning(f"⚠️ Impossibile installare auto-import computer_use: {e}")
         except Exception as e:
             logger.error(f"❌ Errore installazione auto-import: {e}")
+
+    def _installa_vision_litellm(self) -> None:
+        """
+        Monkey-patch di litellm.completion per iniettare screenshot
+        nell'ultimo messaggio utente quando la vision è abilitata.
+        
+        COME FUNZIONA (spiegazione per principianti):
+        1. Quando la vision è attiva, prima di ogni messaggio catturiamo uno screenshot
+        2. Lo screenshot viene salvato come "pendente" in core/vision.py
+        3. Quando litellm.completion viene chiamato, intercettiamo la chiamata
+        4. Troviamo l'ultimo messaggio utente e lo convertiamo in formato multimodale:
+           Da: {"role": "user", "content": "apri youtube"}
+           A:  {"role": "user", "content": [
+                   {"type": "text", "text": "apri youtube"},
+                   {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}
+               ]}
+        5. Il modello vision "vede" lo screenshot e può agire di conseguenza
+        """
+        try:
+            import litellm
+            from core import vision as vision_module
+
+            # Salva il metodo originale (se non già salvato)
+            if not hasattr(litellm, '_original_completion'):
+                litellm._original_completion = litellm.completion
+
+            def patched_completion(*args, **kwargs):
+                """
+                Intercetta litellm.completion e inietta lo screenshot
+                pendente nell'ultimo messaggio utente.
+                """
+                # Controlla se c'è uno screenshot pendente da inviare
+                screenshot_b64 = vision_module.preleva_screenshot_pendente()
+
+                if screenshot_b64:
+                    messages = kwargs.get("messages", [])
+
+                    # Trova l'ultimo messaggio utente e convertilo in multimodale
+                    for i in range(len(messages) - 1, -1, -1):
+                        if messages[i].get("role") == "user":
+                            testo_originale = messages[i].get("content", "")
+
+                            # Se il contenuto è già una lista (multimodale), aggiungi
+                            if isinstance(testo_originale, list):
+                                testo_originale.append({
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{screenshot_b64}"
+                                    }
+                                })
+                            else:
+                                # Converti da stringa a formato multimodale
+                                messages[i]["content"] = [
+                                    {"type": "text", "text": str(testo_originale)},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {
+                                            "url": f"data:image/jpeg;base64,{screenshot_b64}"
+                                        }
+                                    }
+                                ]
+
+                            logger.info("👁️ Screenshot iniettato nel messaggio per il modello vision")
+                            break
+
+                    kwargs["messages"] = messages
+
+                # Chiama il completion originale
+                return litellm._original_completion(*args, **kwargs)
+
+            # Applica il monkey-patch
+            litellm.completion = patched_completion
+            logger.info("👁️ Monkey-patch litellm.completion installato per vision")
+
+        except ImportError as e:
+            logger.warning(f"⚠️ Impossibile installare vision litellm: {e}")
+        except Exception as e:
+            logger.error(f"❌ Errore installazione vision litellm: {e}")
 
     def riconfigura(self, config: Dict[str, Any]) -> bool:
         """
@@ -340,6 +427,17 @@ Spiega cosa fai PRIMA di agire. Per accenti usa scrivi_testo_clipboard().
                 contenuto="L'interprete sta già elaborando un messaggio. Attendi o premi STOP."
             ))
             return False
+
+        # Se la vision è attiva, cattura uno screenshot PRIMA di inviare
+        # Lo screenshot viene salvato come "pendente" e iniettato da
+        # litellm.completion monkey-patch quando il modello viene chiamato
+        try:
+            from core import vision
+            if vision.is_vision_abilitata():
+                vision.imposta_screenshot_pendente()
+                logger.info("👁️ Screenshot catturato per vision (verrà iniettato nella chiamata LLM)")
+        except Exception as e:
+            logger.warning(f"⚠️ Errore cattura screenshot vision: {e}")
 
         # Aggiungi alla cronologia
         # NOTA: In v0.1.x il formato è {"role": "user", "message": "..."}

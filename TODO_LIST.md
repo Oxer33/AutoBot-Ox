@@ -71,6 +71,22 @@
 - ✅ Aggiornato requirements.txt, main.py, default_config.json
 - ✅ Aggiornato ARCHITETTURA.md con note tecniche
 
+## Fase 9: Fix Computer Use + Vision + Chat ✅
+- ✅ Fix computer_use nel subprocess: flag `_computer_use_abilitato` era False nel processo separato
+- ✅ Fix auto-inject `abilita_computer_use(True)` nel import_block del monkey-patch
+- ✅ Fix context_window locale: da 4096 a 16384 (evita tokentrim su system_message)
+- ✅ Fix system_message troppo lungo: ridotto da ~45 righe a ~12 righe compatte
+- ✅ Fix chat flickering: aggiornamento in-place `label_contenuto.configure(text=...)` invece di destroy/recreate
+- ✅ Fix scroll ottimizzato: scrolla solo ogni 20 caratteri durante streaming
+- ✅ Vision: nuovo modulo `core/vision.py` con cattura screenshot + base64 JPEG
+- ✅ Vision: monkey-patch `litellm.completion` per iniettare screenshot nel messaggio utente
+- ✅ Vision: auto-cattura screenshot prima di ogni messaggio quando attivo
+- ✅ Vision: toggle nella sidebar + callback in app.py
+- ✅ Vision: caricamento stato dalle impostazioni all'avvio
+- ✅ Aggiunto Pillow a requirements.txt e check dipendenze main.py
+- ✅ Aggiornato default_config.json con `vision: false`
+- ✅ Aggiornato ARCHITETTURA.md con note tecniche vision e monkey-patch
+
 ## Miglioramenti Futuri ⏳
 - ⏳ 🟡 Crittografia API key con libreria cryptography
 - ⏳ 🟢 Supporto temi personalizzabili

@@ -19,10 +19,12 @@ psutil==6.1.1
 pyautogui==0.9.54
 pyperclip==1.11.0
 
+# Vision - Cattura e ridimensionamento screenshot per modelli vision
+Pillow==11.1.0
+
 # Packaging per creare l'EXE portable
 pyinstaller==6.11.1
 
 # --- Dipendenze future (non ancora usate nel codice) ---
 # python-dotenv==1.0.1    # Per variabili ambiente (.env)
 # cryptography==44.0.0    # Per crittografia API key
-# Pillow==11.1.0          # Per gestione immagini

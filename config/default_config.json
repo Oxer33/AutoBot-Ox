@@ -23,6 +23,7 @@
     "sicurezza": {
         "auto_run": false,
         "computer_use": false,
+        "vision": false,
         "safe_mode": "ask",
         "cartella_lavoro": "",
         "conferma_prima_esecuzione": true

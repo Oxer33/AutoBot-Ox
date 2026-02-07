@@ -40,6 +40,7 @@ def verifica_dipendenze() -> bool:
         ("psutil", "psutil", "Monitoraggio sistema (RAM, CPU)"),
         ("pyautogui", "pyautogui", "Controllo mouse e tastiera (Computer Use)"),
         ("pyperclip", "pyperclip", "Clipboard per testo con caratteri speciali"),
+        ("PIL", "Pillow", "Gestione immagini (Vision - screenshot al modello)"),
     ]
 
     for nome_import, nome_pip, descrizione in dipendenze:

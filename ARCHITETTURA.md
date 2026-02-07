@@ -37,7 +37,8 @@ AutoBot Ox/
 │   ├── interpreter_wrapper.py     #    Wrapper Open Interpreter con threading
 │   ├── provider_manager.py        #    Gestione provider LLM (locale/cloud)
 │   ├── health_check.py            #    Heartbeat server locale (porta 1234)
-│   └── computer_use.py            #    Controllo mouse/tastiera (pyautogui)
+│   ├── computer_use.py            #    Controllo mouse/tastiera (pyautogui)
+│   └── vision.py                 #    Cattura screenshot + invio a modelli vision
 │
 ├── gui/                           # 🖥️ MODULO INTERFACCIA GRAFICA
 │   ├── __init__.py                #    Inizializzazione modulo
@@ -125,6 +126,7 @@ AutoBot Ox/
 4. **Emergency Stop**: Pulsante per interrompere immediatamente qualsiasi operazione
 5. **Cartella di Lavoro**: L'IA opera solo nella cartella specificata dall'utente
 6. **Computer Use**: Disattivato di default. Toggle nella sidebar. FAILSAFE: muovere il mouse nell'angolo in alto a sinistra interrompe tutto. Ogni azione viene loggata.
+7. **Vision**: Disattivato di default. Quando attivo, cattura uno screenshot prima di ogni messaggio e lo invia al modello come immagine base64. Serve un modello con capacità vision.
 
 ## Componenti Completati ✅
 - [x] Struttura modulare del progetto
@@ -145,6 +147,10 @@ AutoBot Ox/
 - [x] Computer Use: controllo mouse/tastiera via pyautogui
 - [x] Fix connessione LLM: api_key dummy per locale, prefisso openrouter/ per cloud
 - [x] Fix context window warning litellm
+- [x] Vision: cattura screenshot + invio a modelli vision (core/vision.py)
+- [x] Fix computer_use nel subprocess: auto-abilita flag + auto-inject import
+- [x] Fix chat flickering: aggiornamento in-place label durante streaming
+- [x] Monkey-patch litellm.completion per vision multimodale
 
 ## Note Tecniche Importanti
 
@@ -157,8 +163,15 @@ AutoBot Ox/
 - Usa `pyautogui` per mouse/tastiera e `pyperclip` per clipboard
 - Ogni funzione controlla il flag `_computer_use_abilitato` prima di agire
 - FAILSAFE di pyautogui: mouse nell'angolo in alto a sinistra = stop totale
-- Le istruzioni per l'IA sono nel `system_message` dell'interpreter wrapper
-- L'IA importa il modulo con `from core.computer_use import ...`
+- **Monkey-patch preprocess_code**: Auto-inject import + `abilita_computer_use(True)` nel subprocess
+- Il codice gira in un subprocess separato, quindi il flag va abilitato anche lì
+
+### Vision (core/vision.py)
+- Cattura screenshot con `pyautogui.screenshot()`, ridimensiona con `Pillow`, codifica in base64 JPEG
+- **Monkey-patch litellm.completion**: Inietta lo screenshot nell'ultimo messaggio utente in formato multimodale
+- Lo screenshot viene catturato PRIMA di inviare il messaggio e iniettato DOPO tokentrim
+- Formato multimodale: `{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}`
+- Serve un modello con capacità vision (GPT-4o, Claude 3, Gemini Pro, ecc.)
 
 ## Componenti Futuri / Miglioramenti Possibili
 - [ ] Crittografia API key con libreria cryptography

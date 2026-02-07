@@ -36,6 +36,7 @@ class Sidebar(ctk.CTkFrame):
         callback_cambio_provider: Optional[Callable] = None,
         callback_toggle_autorun: Optional[Callable] = None,
         callback_toggle_computer_use: Optional[Callable] = None,
+        callback_toggle_vision: Optional[Callable] = None,
         callback_cambio_cartella: Optional[Callable] = None,
         callback_nuova_chat: Optional[Callable] = None,
         callback_export: Optional[Callable] = None,
@@ -55,6 +56,7 @@ class Sidebar(ctk.CTkFrame):
         self._callback_cambio_provider = callback_cambio_provider
         self._callback_toggle_autorun = callback_toggle_autorun
         self._callback_toggle_computer_use = callback_toggle_computer_use
+        self._callback_toggle_vision = callback_toggle_vision
         self._callback_cambio_cartella = callback_cambio_cartella
         self._callback_nuova_chat = callback_nuova_chat
         self._callback_export = callback_export
@@ -245,6 +247,36 @@ class Sidebar(ctk.CTkFrame):
         )
         # Inizialmente nascosto
 
+        # Toggle Vision (invio screenshot al modello)
+        self._frame_vision = ctk.CTkFrame(self, fg_color="transparent")
+        self._frame_vision.pack(fill="x", padx=15, pady=(5, 2))
+
+        ctk.CTkLabel(
+            self._frame_vision,
+            text="👁️ Vision:",
+            font=ctk.CTkFont(size=13)
+        ).pack(side="left")
+
+        self._switch_vision = ctk.CTkSwitch(
+            self._frame_vision,
+            text="",
+            command=self._on_toggle_vision,
+            width=40,
+            onvalue=True,
+            offvalue=False
+        )
+        self._switch_vision.pack(side="right")
+
+        # Avviso vision
+        self._label_avviso_vision = ctk.CTkLabel(
+            self,
+            text="👁️ Uno screenshot verrà inviato\nal modello con ogni messaggio.\nServe un modello con vision!",
+            font=ctk.CTkFont(size=10),
+            text_color="#8e24aa",
+            justify="left"
+        )
+        # Inizialmente nascosto
+
         # Separatore
         self._crea_separatore()
 
@@ -372,6 +404,20 @@ class Sidebar(ctk.CTkFrame):
         if self._callback_toggle_computer_use:
             self._callback_toggle_computer_use(attivo)
 
+    def _on_toggle_vision(self) -> None:
+        """Chiamato quando l'utente attiva/disattiva la vision (screenshot al modello)."""
+        attivo = self._switch_vision.get()
+        logger.info(f"👁️ Vision: {'ATTIVA' if attivo else 'DISATTIVATA'}")
+
+        # Mostra/nascondi avviso
+        if attivo:
+            self._label_avviso_vision.pack(fill="x", padx=20, pady=(0, 5))
+        else:
+            self._label_avviso_vision.pack_forget()
+
+        if self._callback_toggle_vision:
+            self._callback_toggle_vision(attivo)
+
     def _on_cambio_cartella(self) -> None:
         """Apre il dialogo per selezionare la cartella di lavoro."""
         cartella = filedialog.askdirectory(
@@ -493,6 +539,20 @@ class Sidebar(ctk.CTkFrame):
         else:
             self._switch_computer_use.deselect()
             self._label_avviso_computer_use.pack_forget()
+
+    def imposta_vision(self, attivo: bool) -> None:
+        """
+        Imposta lo stato dell'interruttore vision.
+        
+        Args:
+            attivo: True per attivare, False per disattivare
+        """
+        if attivo:
+            self._switch_vision.select()
+            self._label_avviso_vision.pack(fill="x", padx=20, pady=(0, 5))
+        else:
+            self._switch_vision.deselect()
+            self._label_avviso_vision.pack_forget()
 
     def ottieni_apikey(self) -> str:
         """Restituisce la API key attualmente inserita nel campo."""
