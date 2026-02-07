@@ -142,11 +142,33 @@ class BollaMessaggio(ctk.CTkFrame):
         Adatta l'altezza del widget Text al contenuto.
         tkinter.Text non lo fa automaticamente, quindi calcoliamo
         il numero di righe necessarie e impostiamo l'altezza.
+        
+        NOTA: Usiamo count con "displaylines" per contare le righe
+        VISIVE (incluso word-wrap), non quelle logiche. Così testi
+        lunghi che vanno a capo non vengono tagliati.
         """
         self.text_contenuto.update_idletasks()
-        # Conta le righe reali (considerando il word wrap)
-        num_righe = int(self.text_contenuto.index("end-1c").split(".")[0])
-        # Aggiungi un po' di spazio extra per il word wrap
+        
+        try:
+            # Conta le display lines (righe visive, incluso word-wrap)
+            # Questo è il metodo più accurato per calcolare l'altezza reale
+            num_display_lines = self.text_contenuto.count("1.0", "end", "displaylines")
+            if num_display_lines and isinstance(num_display_lines, tuple):
+                num_righe = num_display_lines[0]
+            elif num_display_lines:
+                num_righe = int(num_display_lines)
+            else:
+                # Fallback: conta le righe logiche
+                num_righe = int(self.text_contenuto.index("end-1c").split(".")[0])
+        except Exception:
+            # Fallback sicuro: conta le righe logiche + margine per word-wrap
+            num_righe = int(self.text_contenuto.index("end-1c").split(".")[0])
+            # Aggiungi margine stimato per word-wrap
+            contenuto = self.text_contenuto.get("1.0", "end-1c")
+            if contenuto:
+                righe_lunghe = sum(1 for riga in contenuto.split("\n") if len(riga) > 60)
+                num_righe += righe_lunghe
+        
         self.text_contenuto.configure(height=max(1, num_righe))
 
 
