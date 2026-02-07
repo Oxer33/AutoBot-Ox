@@ -38,8 +38,6 @@ def verifica_dipendenze() -> bool:
         ("customtkinter", "customtkinter", "GUI Framework (interfaccia grafica)"),
         ("requests", "requests", "Richieste HTTP (per health check)"),
         ("psutil", "psutil", "Monitoraggio sistema (RAM, CPU)"),
-        ("PIL", "Pillow", "Gestione immagini"),
-        ("dotenv", "python-dotenv", "Variabili ambiente"),
     ]
 
     for nome_import, nome_pip, descrizione in dipendenze:
